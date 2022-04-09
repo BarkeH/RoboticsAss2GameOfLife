@@ -1,0 +1,44 @@
+#include <Adafruit_NeoPixel.h>
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(20, 2, NEO_GRB + NEO_KHZ800);
+String LED[] = {"_","_","_","_","_","_","_","_","_","_","_","_","_","_","_","_","_","_","_","_","_"};
+uint32_t red = pixels.Color(255,0,0);
+uint32_t green = pixels.Color(0,255,0);
+uint32_t blue = pixels.Color(0,0,255);
+uint32_t yellow = pixels.Color(255,255,0);
+uint32_t pink = pixels.Color(255,0,100);
+uint32_t colour[] = {red, green, blue, yellow, pink};
+String Red = "16711680";
+String Green = "65280";
+String Blue = "255";
+String Yellow = "16776960";
+String Pink = "16711780";
+long randNumber;
+ 
+void setup()
+{  
+  pinMode(2,OUTPUT);
+  pixels.begin();
+  Serial.begin(9600);
+   for(int i = 0; i <= 20; i++)
+  {
+    randomSeed(analogRead(0));
+     randNumber = random(4);
+    //int Rand = random(4);
+    Serial.println(randNumber);      
+    pixels.setPixelColor(i,colour[randNumber]);   
+    LED[i] = colour[randNumber];
+    pixels.show();
+    //Serial.println(LED[6]); 
+  }
+  if(LED[0] == Blue)
+  {
+    Serial.println("Blue");
+  }
+}
+
+void loop()
+{
+  
+ 
+  
+}
