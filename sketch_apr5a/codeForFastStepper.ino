@@ -2,10 +2,10 @@
 // Include the AccelStepper library:
 #include <AccelStepper.h>
 // Motor pin definitions:
-#define motorPin1  38      // IN1 on the ULN2003 driver
-#define motorPin2  37      // IN2 on the ULN2003 driver
-#define motorPin3  39     // IN3 on the ULN2003 driver
-#define motorPin4  36     // IN4 on the ULN2003 driver
+#define motorPin1  40      // IN1 on the ULN2003 driver
+#define motorPin2  39     // IN2 on the ULN2003 driver
+#define motorPin3  41     // IN3 on the ULN2003 driver
+#define motorPin4  38     // IN4 on the ULN2003 driver
 // Define the AccelStepper interface type; 4 wire motor in half step mode:
 #define MotorInterfaceType 8
 // Initialize with pin sequence IN1-IN3-IN2-IN4 for using the AccelStepper library with 28BYJ-48 stepper motor:
