@@ -1,0 +1,397 @@
+#include <Adafruit_NeoPixel.h>
+#include <Keypad.h>
+#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
+#include <Stepper.h>
+#include <TimedAction.h>
+int x = 1;
+const int stepsPerRevolution = 2048;
+Stepper myStepper = Stepper(stepsPerRevolution, 38, 39, 37, 36);
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+LiquidCrystal_I2C lcd2(0x28,16,2);
+const int ROW_NUM = 4; //four rows
+const int COLUMN_NUM = 3; //three columns
+
+char keys[ROW_NUM][COLUMN_NUM] = {
+  {'1','2','3'},
+  {'4','5','6'},
+  {'7','8','9'},
+  {'*','0','#'}
+};
+String Jobs[] = {"Fast Food","Astronaut","Programmer","Police","physicist",};
+byte pin_rows[ROW_NUM] = {13, 12, 11, 10}; //connect to the row pinouts of the keypad
+byte pin_column[COLUMN_NUM] = {9, 8, 7}; //connect to the column pinouts of the keypad
+
+Keypad keypad = Keypad( makeKeymap(keys), pin_rows, pin_column, ROW_NUM, COLUMN_NUM );
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(70, 2, NEO_GRB + NEO_KHZ800);
+int mainPathLength = 60;
+char mainPath[] = "apaapaaepaasaaapaeaesaaapaaeapeaeaepaaapaaeaeepeaeaaepasaaaa";
+String hi[] = {"Money","Taxes","Job","+1 Wealth","+1 Knowledge",};
+int housePrice1[5];
+int housePrice2[5];
+int housePrice3[5];
+int housePrice4[5];
+
+
+uint32_t red = pixels.Color(255,0,0);
+uint32_t green = pixels.Color(0,255,0);
+uint32_t blue = pixels.Color(0,0,255);
+uint32_t yellow = pixels.Color(255,255,0);
+uint32_t pink = pixels.Color(255,0,100);
+uint32_t test = pixels.Color(10,0,5);
+uint32_t brown = pixels.Color(128,64,0);
+uint32_t teal = pixels.Color(0,128,128);
+uint32_t grey = pixels.Color(20,20,20);
+uint32_t white = pixels.Color(255,255,255);
+
+uint32_t colour[] = {red, green, blue, yellow, pink, test, brown, teal, grey, white};
+uint32_t playerColours[] = {blue,white,teal,pink};
+uint32_t actionColour = yellow;
+uint32_t stopColour = red;
+uint32_t paydayColour = green;
+uint32_t eventColour = grey;
+
+struct jobStructure {
+  String title;
+  int pay;
+};
+
+struct playerStructure {
+  uint32_t colour;
+  int pos;
+  int money;
+  int actionCards;
+  
+  char path[];
+  
+};
+int house1 = 0;
+int house2 = 0;
+int house3 = 0;
+int house4 = 0;
+playerStructure players[4] = {{playerColours[0],0,0,0,mainPath},{playerColours[1],0,0,0,mainPath},{playerColours[2],0,0,0,mainPath},{playerColours[3],0,0,0,mainPath}};
+
+int numPlayers = 0;
+
+
+long randNumber;
+ 
+void setup()
+{  
+  myStepper.setSpeed(15);
+  pinMode(2,OUTPUT);
+  pixels.setBrightness(200);
+  pixels.begin();
+  
+  Serial.begin(9600);
+  setBoard(pixels,mainPath,mainPathLength);
+  
+  lcd.begin();
+  lcd.backlight();
+  
+  lcd2.begin();
+  lcd2.backlight();
+  beforeGame();
+  
+//  for (int i = 0; i < 4; i++){
+//    players[i].colour = playerColours[i];
+//    
+//  }
+}
+int y = 1;
+void loop()
+{
+  randomSeed(analogRead(0));
+  int i = random(4);
+int j = random(4);
+house1 = random(100000, 800000);
+house2 = random(100000, 800000);
+  //myStepper.step(stepsPerRevolution * 10);
+  //delay(10000); 
+  if (x == 1)
+  {
+    lcd.setCursor(0,0);
+    lcd.clear();
+    lcd.print(hi[i] + " or " );
+    lcd.setCursor(0,1);
+    lcd.print(hi[j]);     
+    x++;
+  }
+  
+  char temp = getInput("12");
+//char key = keypad.getKey();
+if (y == 1)
+{
+  y++;
+  lcd.setCursor(0,0);
+  //lcd.clear();
+  if (temp == '1'){
+    lcd.clear();
+    lcd.print("you picked ");
+    lcd.setCursor(0,1);
+    lcd.print(hi[i]);    
+  }
+  else if (temp == '2'){
+    lcd.clear();
+    lcd.print("you picked ");
+    lcd.setCursor(0,1);
+    lcd.print(hi[j]);    
+  }
+}
+}
+void beforeGame(){
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("welcome to the ");
+  lcd.setCursor(0,1);
+  lcd.print("game of life");
+
+  lcd2.clear();
+  lcd2.setCursor(0,0);
+  lcd2.print("press button to begin");
+  getInput("#");
+
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("choose how many");
+  lcd.setCursor(0,1);
+  lcd.print("players");
+
+  lcd2.clear();
+  lcd2.print("press 3 or 4");
+  char temp = getInput("34");
+  numPlayers = temp - '0';
+  
+  
+}
+
+void setBoard(Adafruit_NeoPixel pixels, char path[], int len){
+  
+  for (int i = 0; i < len; i++){
+    if (path[i] == 'a'){pixels.setPixelColor(i,actionColour);}
+    if (path[i] == 's'){pixels.setPixelColor(i,stopColour);}
+    if (path[i] == 'e'){pixels.setPixelColor(i,eventColour);}
+    if (path[i] == 'p'){pixels.setPixelColor(i,paydayColour);}
+    
+  }
+  pixels.show();
+}
+
+char getInput(char options[]){
+  
+  bool done = false;
+  char input = ' ';
+  while (done == false) {
+    input = keypad.getKey();
+    if (input){
+      for (int i = 0; i <= sizeof(options); i++){
+      
+        if (options[i] == input){
+          done == true;
+          return input;
+        }
+      }
+    }
+    
+  }
+  
+}
+void House()
+{
+  lcd.setCursor(0,0);
+    lcd.clear();
+    lcd.print(Pick a house);
+    lcd.setCursor(0,1);
+    lcd.print("player ", i);
+    wait(1000);
+    while (playerpick == false)
+    {
+       lcd.setCursor(0,0);
+    lcd.clear();
+    lcd.print("price: ", house1 );
+    lcd.setCursor(0,1);
+    lcd.print("Max sell: ", house2);
+    wait(1000);
+    if (temp == 1)
+    {
+      playerpick = true;
+      if (playerNumber == 1)
+      {
+        Player1.player1Money - house1;
+        Player1.player1Houses + 1;
+        housePrice1[x] = house1;
+        x++;
+      }
+      else if (playerNumber == 2)
+      {
+        Player2.player2Money - house1;
+        Player2.player1Houses + 1;
+        housePrice2[x] = house1;
+        x++;
+      }
+      else if (playerNumber == 3)
+      {
+        Player3.player3Money - house1;
+        Player3.player1Houses + 1;
+        housePrice3[x] = house1;
+        x++;
+      }
+      else if (playerNumber == 4)
+      {
+        Player4.player4Money - house1;
+        Player4.player1Houses + 1;
+        housePrice4[x] = house1;
+        x++;
+      }
+    }
+    lcd.setCursor(0,0);
+    lcd.clear();
+    lcd.print("price: ", house3 );
+    lcd.setCursor(0,1);
+    lcd.print("Max sell: ", house4);
+    wait(1000);
+    if (temp == 2)
+    {
+      playerpick = true;
+      if (playerNumber == 1)
+      {
+        Player1.player1Money - house3;
+        Player1.player1Houses + 1;
+        housePrice1[x] = house3;
+        x++;
+      }
+      else if (playerNumber == 2)
+      {
+        Player2.player2Money - house3;
+        Player2.player1Houses + 1;
+        housePrice2[x] = house3;
+        x++;
+      }
+      else if (playerNumber == 3)
+      {
+        Player3.player3Money - house3;
+        Player3.player1Houses + 1;
+        housePrice3[x] = house3;
+        x++;
+      }
+      else if (playerNumber == 4)
+      {
+        Player4.player4Money - house3;
+        Player4.player1Houses + 1;
+        housePrice4[x] = house3;
+        x++;
+      }
+    }
+    }
+}
+}
+bool playerpick = false;
+char temp2 = getInput("12345678");
+int playerNumber = 0;
+int x = 0;
+int yes = 0;
+private void EndHouse
+{
+  playerPick = false;
+  for (int i = 1; i<= numPlayers; i++)
+  {
+   while (playerPick == false)
+   {
+    if (playerNumber == 1)
+    {
+      if (temp2 <= 8)
+      {
+        for (int y = 0; y <= housePrice1.Count; y++)
+        {
+          randomSeed(analogRead(0));
+          yes = random(100000, housePrice1[y]);
+          Player1.Player1Money + yes;
+          playerPick = true;
+        }
+       
+      }
+    }
+    else if (playerNumber == 2)
+    {
+      if (temp2 <= 8)
+      {
+        for (int y = 0; y <= housePrice2.Count; y++)
+        {
+          randomSeed(analogRead(0));
+          yes = random(100000, housePrice2[y]);
+          Player2.Player2Money + yes;
+          playerPick = true;
+        }
+       
+      }
+    }
+    else if (playerNumber == 3)
+    {
+      if (temp2 <= 8)
+      {
+        for (int y = 0; y <= housePrice3.Count; y++)
+        {
+          randomSeed(analogRead(0));
+          yes = random(100000, housePrice3[y]);
+          Player3.Player3Money + yes;
+          playerPick = true;
+        }
+       
+      }
+    }
+    else if (playerNumber == 4)
+    {
+      if (temp2 <= 8)
+      {
+        for (int y = 0; y <= housePrice4.Count; y++)
+        {
+          randomSeed(analogRead(0));
+          yes = random(100000, housePrice4[y]);
+          Player4.Player4Money + yes;
+          playerPick = true;
+        }
+       
+      }
+    }
+    
+   }
+   playerPick = false;
+  }  
+}
+struct Player1
+{
+ String player1Job;
+ String player1Money;
+ String player1Earn;
+ String player1Taxes;
+ int player1Houses;
+};
+struct Player2
+{
+ String player2Job;
+ String player2Money;
+ String player2Earn;
+ String player2Taxes;
+ int player2Houses;
+};
+struct Player3
+{
+ String player3Job;
+ String player3Money;
+ String player3Earn;
+ String player3Taxes;
+ int player3Houses;
+};
+struct Player4
+{
+ String player4Job;
+ String player4Money;
+ String player4Earn;
+String player4Taxes;
+int player4Houses;
+};
+
+void pressButton(){
+
+}
