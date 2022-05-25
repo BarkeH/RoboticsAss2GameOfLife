@@ -5,10 +5,10 @@
 #include <AccelStepper.h>
 #include <TimedAction.h>
 
-#define motorPin1  52      // IN1 on the ULN2003 driver
-#define motorPin2  53     // IN2 on the ULN2003 driver
-#define motorPin3  50     // IN3 on the ULN2003 driver
-#define motorPin4  51     // IN4 on the ULN2003 driver
+#define motorPin1  40      // IN1 on the ULN2003 driver
+#define motorPin2  39     // IN2 on the ULN2003 driver
+#define motorPin3  41     // IN3 on the ULN2003 driver
+#define motorPin4  38     // IN4 on the ULN2003 driver
 
 #define MotorInterfaceType 8
 
@@ -39,7 +39,6 @@ char uniPath[] = "aaaaaaaaaa";
 int uniPathLength = 10;
 Adafruit_NeoPixel uniPixel = Adafruit_NeoPixel(10,4, NEO_GRB + NEO_KHZ800);
 
-bool finished = false;
 
 uint32_t red = pixels.Color(255,0,0);
 uint32_t green = pixels.Color(0,255,0);
@@ -58,6 +57,7 @@ uint32_t actionColour = yellow;
 uint32_t stopColour = red;
 uint32_t paydayColour = green;
 uint32_t eventColour = grey;
+uint32_t tileColours[] = {actionColour,stopColour,paydayColour,eventColour};
 
 struct jobStructure {
   String title;
@@ -70,17 +70,48 @@ struct playerStructure {
   int money;
   int actionCards;
   String readableColour;
+  bool educated;
+  bool finished;
   char path[];
   
 };
 
-playerStructure players[4] = {{playerColours[0],0,0,0,"blue",mainPath},{playerColours[1],0,0,0,"white",mainPath},{playerColours[2],0,0,0,"teal",mainPath},{playerColours[3],0,0,0,"pink",mainPath}};
+playerStructure players[4] = {{playerColours[0],0,0,0,"blue",false,false,mainPath},{playerColours[1],0,0,0,"white",false,false,mainPath},{playerColours[2],0,0,0,"teal",false,false,mainPath},{playerColours[3],0,0,0,"pink",false,false,mainPath}};
 
 int numPlayers = 0;
-
+int currentTurn = 0;
+bool finished = false;
 
 long randNumber;
- 
+
+void flashLights(){
+  for (int i = 0; i < 4; i++){
+    if (players[i].pos == 0){continue;}
+    for (int j = 0; j < 4-i; j++){
+      if (i != j && players[i].pos == players[j].pos && players[i].path == players[j].path){
+        Adafruit_NeoPixel pixel;
+        if (players[i].path == mainPath){
+          pixel = pixels;
+        }else if (players[i].path == uniPath){
+          pixel = uniPixel;
+        }
+
+        if (pixel.getPixelColor(players[i].pos) == players[i].colour) { pixel.setPixelColor(players[i].pos,players[j].colour);}
+        else if (pixel.getPixelColor(players[i].pos) == players[j].colour) { setPixel(pixel,players[i].path,players[i].pos);}
+        else {
+          for (int k = 0; k < 4; k++){
+            if (pixel.getPixelColor(players[i].pos) == players[i].colour) { pixel.setPixelColor(players[i].pos,players[j].colour); break;}
+          }
+        }
+        
+      }
+    }
+  }
+}
+
+TimedAction flashLightThread = TimedAction(500,flashLights);
+
+void(* resetFunc) (void) = 0;
 void setup()
 {  
   stepper.setMaxSpeed(2200);
@@ -97,8 +128,6 @@ void setup()
   pixels.begin();
   
   Serial.begin(9600);
-  spinWheel();
-  
   setBoard(pixels,mainPath,mainPathLength);
   
   lcd.begin();
@@ -114,12 +143,58 @@ void setup()
 //  }
 }
 
+void finishGame(){
+  int currentMax = 0;
+  int currentWinner = 0;
+  for (int i = 0; i < numPlayers; i++){
+    int money = 0;
+    money +=  players[i].money;
+    money += players[i].actionCards * 100;
+    if (money > currentMax){ currentMax = money; currentWinner = i;}
+    printBothLCD("Player " + String(i+1) " you", "have $" +String(money), "press # to", "continue");
+    getInput("#"); 
+  }
+  printBothLCD("The winner is","Player " + String(currentWinner + 1) +" with", "$" + String(currentMax), "Press # to", "restart");
+  getInput("#");
+  resetFunc();
+}
+
 void loop()
 {
-//  myStepper.step(stepsPerRevolution * 10);
-  
+  if (finished == true){
+    finishGame();
+  }
+  finished = true;
+  for (int i = 0; i < numPlayers; i++){
+    if (players[i].finished == false){
+      finished = false;
+      printBothLCD("Player " + String(i+1) + " it is", "your turn, press","# to spin","");
+      getInput("#");
+      int distance = spinWheel();
+      for (int j=0; j < distance; j++){
+        delay(500);
+        players[i].pos ++;
+        if (players[i].path == mainPath){
+           if (players[i].pos == mainPathLength){players[i].finished = true;
+           setPixel(pixels, mainPath, players[i].pos - 1);
+           pixels.setPixelColor(players[i].pos,players[i].colour);
+           
+        }
+        if (players[i].path[players[i].pos] == "s"){stopSquare(players[i]);}
+        
+        
+      }
+      if (players[i].path[players[i].pos] == "a"){actionSquare(players[i]);}
+      if (players[i].path[players[i].pos] == "e"){eventSquare(players[i]);}
+
+    }
+  }
   
 }
+
+void actionSquare(playerStructure player){}
+void eventSquare(playerStructure player){}
+
 void beforeGame(){
 
 
@@ -156,26 +231,28 @@ void beforeGame(){
     getInput("#");
   }
 
-
-  for (int j = 0;j<numPlayers;j++){
+  for (int i = 0;i<numPlayers;i++){
+      
       printBothLCD(
-          "Player " + String(j+1) + " choose", 
+          "Player " + String(i+1) + " choose", 
           "uni or fastpath",
           "press 1 for uni", 
           "2 for fast path"
       );
       char in = getInput("12");
       if (in == '1'){
-          players[i].path = uniPath
+          players[i].path = uniPath;
           players[i].pos = 0;
           players[i].educated = true;
       }else if (in == '2'){
-          
-      }      
+           
+      }
   }
-
+  
+    
   
 }
+
 
 int spinWheel(){
   int result;
@@ -196,8 +273,9 @@ int spinWheel(){
 }
 
 void setBoard(Adafruit_NeoPixel pixels, char path[], int len){
-  pixels.clear();
+  
   for (int i = 0; i < len; i++){
+    Serial.println("hi");
     if (path[i] == 'a'){pixels.setPixelColor(i,actionColour);}
     if (path[i] == 's'){pixels.setPixelColor(i,stopColour);}
     if (path[i] == 'e'){pixels.setPixelColor(i,eventColour);}
@@ -205,6 +283,13 @@ void setBoard(Adafruit_NeoPixel pixels, char path[], int len){
     
   }
   pixels.show();
+}
+void setPixel(Adafruit_NeoPixel pixels, char path[], int i){
+  if (path[i] == 'a'){pixels.setPixelColor(i,actionColour);}
+  if (path[i] == 's'){pixels.setPixelColor(i,stopColour);}
+  if (path[i] == 'e'){pixels.setPixelColor(i,eventColour);}
+  if (path[i] == 'p'){pixels.setPixelColor(i,paydayColour);}
+  pixels.show()
 }
 
 char getInput(char options[]){
@@ -228,9 +313,7 @@ char getInput(char options[]){
   
 }
 
-void pressButton(){
-  
-}
+
 
 void printBothLCD(String line1, String line2, String line3, String line4){
     lcd.clear();
